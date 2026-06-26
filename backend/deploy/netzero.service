@@ -1,0 +1,44 @@
+# WalkMate(netzero) 백엔드 — systemd 서비스 유닛 (EC2 prod 배포용 템플릿)
+#
+# 방식 A: 시크릿(DB 비밀번호 등)을 yaml/코드에 박지 않고, 이 유닛이 EnvironmentFile 로
+#         환경변수를 주입한다. application-prod.yaml 은 ${DB_URL} 같은 참조만 둔다.
+#
+# ── 배포 3단계 ──────────────────────────────────────────────
+#   1) jar 배치:   ./gradlew :backend:bootJar  →  build/libs/backend-<version>.jar (-plain 아님!) 를
+#                  /opt/netzero/app.jar 로 복사  (예: backend-0.0.1-SNAPSHOT.jar)
+#   2) env 배치:   backend/.env 를 /etc/netzero/netzero.env 로 복사 후 chmod 600
+#                  (SPRING_PROFILES_ACTIVE=prod, DB_URL/USERNAME/PASSWORD, APP_S3_BUCKET, AWS_REGION 등 포함)
+#   3) 서비스 등록: 이 파일을 /etc/systemd/system/netzero.service 로 복사 후
+#                  sudo systemctl daemon-reload && sudo systemctl enable --now netzero
+#
+#   확인:  systemctl status netzero   /   journalctl -u netzero -f
+#   대안(수동 실행):  set -a; . /etc/netzero/netzero.env; set +a; java -jar /opt/netzero/app.jar
+#
+# ── 보안 하드룰 ─────────────────────────────────────────────
+#   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY 등 자격증명은 절대 넣지 않는다.
+#   S3/Bedrock 호출은 EC2 instance profile(SafeInstanceProfile-{username}) = IAM Role 로 자동 획득.
+#   /etc/netzero/netzero.env 는 root 소유 + 권한 600 으로 두어 시크릿 노출을 막는다.
+
+[Unit]
+Description=WalkMate (netzero) Spring Boot backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=netzero
+Group=netzero
+WorkingDirectory=/opt/netzero
+
+# KEY=VALUE 환경변수 주입. backend/.env 포맷(순수 KEY=VALUE, # 주석/빈 줄)과 호환.
+EnvironmentFile=/etc/netzero/netzero.env
+
+ExecStart=/usr/bin/java -jar /opt/netzero/app.jar
+
+# Spring Boot 의 SIGTERM(graceful shutdown) 종료 코드 143 을 정상으로 취급.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
