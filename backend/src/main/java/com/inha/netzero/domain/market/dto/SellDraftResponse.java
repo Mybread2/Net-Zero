@@ -6,13 +6,11 @@ public class SellDraftResponse {
 
     private final String title;
     private final String description;
-    private final Integer suggestedPrice;
     private final String suggestedCategory;
 
     private SellDraftResponse(SellDraftResult result) {
         this.title = result.getTitle();
         this.description = result.getDescription();
-        this.suggestedPrice = result.getSuggestedPrice();
         this.suggestedCategory = result.getSuggestedCategory();
     }
 
@@ -22,6 +20,5 @@ public class SellDraftResponse {
 
     public String getTitle() { return title; }
     public String getDescription() { return description; }
-    public Integer getSuggestedPrice() { return suggestedPrice; }
     public String getSuggestedCategory() { return suggestedCategory; }
 }

@@ -93,7 +93,7 @@ public class MarketController {
                 : List.of();
 
         SellDraftResult result = llmService.generateSellDraft(imageBytes, format, keywordList);
-        return ApiResponse.success(SellDraftResponse.from(result), "추천 가격은 참고용입니다.");
+        return ApiResponse.success(SellDraftResponse.from(result));
     }
 
     private String resolveImageFormat(String contentType) {

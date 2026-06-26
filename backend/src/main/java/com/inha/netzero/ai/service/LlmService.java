@@ -52,13 +52,10 @@ public class LlmService {
             if (node == null) return SellDraftResult.empty();
 
             String category = normalizeCategory(node.path("suggestedCategory").asText("ETC"));
-            Integer price = node.path("suggestedPrice").isNumber()
-                    ? node.path("suggestedPrice").intValue() : null;
 
             return new SellDraftResult(
                     node.path("title").asText(""),
                     node.path("description").asText(""),
-                    price,
                     category);
         } catch (Exception e) {
             log.warn("generateSellDraft failed: {}", e.getMessage());
