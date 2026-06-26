@@ -53,12 +53,17 @@ com.inha.netzero
 ---
 
 ## 빌드 / 실행 / 테스트
+루트가 Gradle 멀티프로젝트(`settings.gradle` → `include 'backend'`)다. IDE는 **루트(`4zero/`)를 열면** Gradle로 임포트된다. 태스크는 `:backend:` 접두사로 실행한다(Windows는 `.\gradlew.bat`).
 ```bash
-cd backend
-./gradlew bootRun        # Windows: .\gradlew.bat bootRun  (기본 프로파일 local = H2 인메모리)
-./gradlew test           # 테스트
-./gradlew build          # 빌드(jar)
+# 루트에서 (권장)
+./gradlew :backend:bootRun   # 실행 (기본 프로파일 local = H2 인메모리)
+./gradlew :backend:test      # 테스트
+./gradlew :backend:build     # 빌드(jar)
+
+# 또는 backend 폴더에서 직접
+cd backend && ./gradlew bootRun
 ```
+> Gradle 실행에는 JDK 17+ 필요(프로젝트 toolchain은 Java 21). IDE의 Gradle JVM도 21로 맞춘다.
 - 프로파일: `local`(H2, 기본) / `prod`(RDS, `DB_URL`/`DB_USERNAME`/`DB_PASSWORD` 환경변수).
 - 헬스체크: `GET /api/health`. 프론트는 `cd frontend && npm install && npm run dev`(포트 3000, `/api/*` 프록시).
 

@@ -14,5 +14,9 @@ Thumbs.db
 .vscode/
 *.iml
 
+# Gradle (루트 멀티프로젝트 빌드 캐시 — wrapper(gradlew, gradle/wrapper/*)는 커밋한다)
+.gradle/
+build/
+
 # 로그
 *.log

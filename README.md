@@ -22,9 +22,14 @@
 
 ### 1) 백엔드 (포트 8080)
 
+루트가 Gradle 멀티프로젝트라 루트에서 바로 실행할 수 있다. IDE도 루트(`4zero/`)를 열면 Gradle로 임포트된다.
+
 ```bash
-cd backend
-./gradlew bootRun        # Windows PowerShell: .\gradlew.bat bootRun
+# 루트에서 (권장)
+./gradlew :backend:bootRun        # Windows PowerShell: .\gradlew.bat :backend:bootRun
+
+# 또는 backend 폴더에서
+cd backend && ./gradlew bootRun
 ```
 
 - 기본 프로파일은 `local` → H2 인메모리 DB 사용 (별도 설치 불필요)

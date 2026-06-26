@@ -45,7 +45,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/health", "/error", "/oauth2/**", "/login/**").permitAll()
+                        // "/ws/**": STOMP 핸드셰이크. 인증은 STOMP CONNECT 프레임에서 별도 처리(chat 도메인).
+                        .requestMatchers("/api/health", "/error", "/oauth2/**", "/login/**", "/ws/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
