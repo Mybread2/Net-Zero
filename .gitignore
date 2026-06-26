@@ -16,6 +16,3 @@ Thumbs.db
 
 # 로그
 *.log
-
-# 교체 전 Vite 백업 (확인 후 삭제 가능)
-frontend_old_vite/
