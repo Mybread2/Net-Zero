@@ -32,3 +32,17 @@ app:
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000}
     onboarding-path: ${OAUTH2_ONBOARDING_PATH:/onboarding}
     home-path: ${OAUTH2_HOME_PATH:/}
+  # AWS 연동(S3/Bedrock 공통). 자격증명은 주입하지 않는다 — IAM Role(DefaultCredentialsProvider) 자동 획득.
+  aws:
+    region: ${AWS_REGION:us-east-1}
+  s3:
+    # 버킷명은 {username}으로 시작. 환경변수로 주입(코드 하드코딩 금지). 로컬은 미설정 가능.
+    bucket: ${APP_S3_BUCKET:}
+    # 비공개 버킷 전제: 업로드(PUT)/조회(GET) 모두 단기 presigned URL 발급.
+    presign-expiry-seconds: ${APP_S3_PRESIGN_EXPIRY_SECONDS:300}
+    download-expiry-seconds: ${APP_S3_DOWNLOAD_EXPIRY_SECONDS:600}
+  bedrock:
+    model-id: ${BEDROCK_MODEL_ID:us.amazon.nova-lite-v1:0}
+    timeout-ms: ${BEDROCK_TIMEOUT_MS:8000}
+    max-tokens: ${BEDROCK_MAX_TOKENS:1024}
+    temperature: ${BEDROCK_TEMPERATURE:0.7}
