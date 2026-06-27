@@ -110,6 +110,54 @@
   animation: gentleFloat 4s ease-in-out infinite;
 }
 
+/* 로그인 버튼이 노출되는 동안만 적용되는 splash 변형.
+   마스코트가 버튼과 겹치지 않게 위로 끌어올리고 크기도 줄인다. */
+.splashHeaderRaised {
+  top: 25%;
+}
+
+.mascotContainerLifted {
+  width: 240px;
+  height: 240px;
+  bottom: 180px;
+}
+
+.splashFooter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 3;
+}
+
+.googleLoginBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  height: 52px;
+  background-color: #ffffff;
+  color: #171d1c;
+  border: none;
+  border-radius: 26px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.splashFooterNote {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+}
+
 /* --- Form Steps --- */
 .stepWrapper {
   flex: 1;

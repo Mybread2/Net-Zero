@@ -191,16 +191,22 @@ export default function Onboarding() {
     const handleSplashClick = () => {
       if (hasToken) setStep(1);
     };
+    const headerClass = hasToken
+      ? styles.splashHeader
+      : `${styles.splashHeader} ${styles.splashHeaderRaised}`;
+    const mascotClass = hasToken
+      ? styles.mascotContainer
+      : `${styles.mascotContainer} ${styles.mascotContainerLifted}`;
     return (
       <div className={styles.container} onClick={handleSplashClick}>
         <div className={styles.card}>
           <div className={styles.splash}>
-            <div className={styles.splashHeader}>
+            <div className={headerClass}>
               <p className={styles.splashSubtitle}>발걸음마다 싱그러운 에코 라이프</p>
               <h1 className={styles.splashLogo}>Dangsquare</h1>
             </div>
 
-            <div className={styles.mascotContainer}>
+            <div className={mascotClass}>
               <Image
                 src="/dangsquare_mascot_official.png"
                 alt="Dangsquare Mascot"
@@ -212,46 +218,16 @@ export default function Onboarding() {
             </div>
 
             {!hasToken && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "48px",
-                  left: 0,
-                  right: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "10px",
-                  zIndex: 3,
-                  padding: "0 24px",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className={styles.splashFooter} onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={startGoogleLogin}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "10px",
-                    width: "100%",
-                    maxWidth: "320px",
-                    height: "52px",
-                    backgroundColor: "#ffffff",
-                    color: "#171d1c",
-                    border: "none",
-                    borderRadius: "26px",
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.18)",
-                  }}
+                  className={styles.googleLoginBtn}
                 >
                   <GoogleLogo />
                   Google로 시작하기
                 </button>
-                <span style={{ color: "rgba(255,255,255,0.85)", fontSize: "12px" }}>
+                <span className={styles.splashFooterNote}>
                   계속 진행하면 Dangsquare 약관에 동의하게 됩니다
                 </span>
               </div>
