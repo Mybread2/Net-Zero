@@ -3,7 +3,16 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./write.module.css";
-import { addMarketItem } from "@/lib/marketMock";
+import { ApiError, marketApi, type MarketCategory } from "@/lib/api";
+import { getToken, isOnboarded } from "@/lib/auth";
+
+const CATEGORY_TO_ENUM: Record<string, MarketCategory> = {
+  먹거리: "FOOD",
+  장난감: "TOY",
+  생활용품: "DAILY",
+  의류: "CLOTHING",
+  기타: "ETC",
+};
 
 type OnboardingData = {
   owner: {
@@ -22,6 +31,20 @@ type OnboardingData = {
 
 const CATEGORIES = ["먹거리", "장난감", "생활용품", "의류", "기타"] as const;
 const MOCK_IMAGES = ["/market_kong.png", "/market_bones.png", "/market_dog_scarf.png"];
+const DEFAULT_LOCATIONS = [
+  "동작구 흑석동",
+  "동작구 상도동",
+  "관악구 봉천동",
+  "관악구 신림동",
+  "서초구 반포동",
+  "서초구 서초동",
+  "강남구 역삼동",
+  "강남구 대치동",
+  "마포구 망원동",
+  "마포구 서교동",
+  "송파구 잠실동",
+  "용산구 한남동"
+];
 
 function WritePageContent() {
   const router = useRouter();
@@ -39,6 +62,9 @@ function WritePageContent() {
   const [priceSuggestible, setPriceSuggestible] = useState(false);
   const [description, setDescription] = useState("");
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 알림 모달 상태
   const [customAlert, setCustomAlert] = useState<{
@@ -47,11 +73,14 @@ function WritePageContent() {
     onConfirm?: () => void;
   } | null>(null);
 
-  // 온보딩 완료 확인 및 기본 정보 로드
+  // 인증/온보딩 확인 + 기본 정보 로드
   useEffect(() => {
-    const isCompleted = localStorage.getItem("dangsquare_onboarding_completed");
-    if (isCompleted !== "true") {
-      router.push("/onboarding");
+    if (!getToken()) {
+      router.replace("/onboarding");
+      return;
+    }
+    if (!isOnboarded()) {
+      router.replace("/onboarding");
     } else {
       const stored = localStorage.getItem("dangsquare_onboarding_data");
       if (stored) {
@@ -73,6 +102,16 @@ function WritePageContent() {
       setLoading(false);
     }
   }, [router]);
+
+  // 카테고리 드롭다운 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handleClose = () => setIsDropdownOpen(false);
+    window.addEventListener("click", handleClose);
+    return () => {
+      window.removeEventListener("click", handleClose);
+    };
+  }, [isDropdownOpen]);
 
   // 카메라 슬롯 클릭 시 이미지 무작위/순차 추가 (최대 10개)
   const handleAddPhoto = () => {
@@ -102,43 +141,50 @@ function WritePageContent() {
     setPriceInput(formatted);
   };
 
+  // 동네 목록 필터링
+  const filteredLocations = DEFAULT_LOCATIONS.filter(loc =>
+    loc.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // 폼 검증
   const isFormValid = title.trim() !== "" && category !== "" && description.trim() !== "";
 
-  // 글 등록 동작
-  const handleUpload = () => {
-    if (!isFormValid) return;
+  // 글 등록: 백엔드 POST /api/market/items.
+  // 이미지 업로드(presign + S3 PUT)는 별도 작업이라 지금은 텍스트/카테고리/가격만 전송한다.
+  const handleUpload = async () => {
+    if (!isFormValid || !category) return;
 
-    // 가격 숫자로 정제
     const numericPrice = Number(priceInput.replace(/,/g, "")) || 0;
+    const categoryEnum = CATEGORY_TO_ENUM[category];
 
-    addMarketItem({
-      title: title.trim(),
-      type,
-      category,
-      price: numericPrice,
-      priceRange: type === "buy" ? (numericPrice > 0 ? `${(numericPrice * 0.8).toLocaleString()}~${(numericPrice * 1.2).toLocaleString()}` : undefined) : undefined,
-      priceSuggestible,
-      location: locationText,
-      images: uploadedPhotos.length > 0 ? uploadedPhotos : ["/dangsquare_mascot_official.png"],
-      description: description.trim(),
-      sellerName: `${ownerName || "멍멍맘"}_${locationText.split(" ")[1]}`
-    });
+    try {
+      await marketApi.create({
+        tradeType: type === "sell" ? "SELL" : "BUY",
+        category: categoryEnum,
+        title: title.trim(),
+        content: description.trim(),
+        price: type === "sell" ? numericPrice : undefined,
+      });
 
-    setCustomAlert({
-      message: `${type === "sell" ? "판매글" : "구매희망글"} 등록이 완료되었습니다.`,
-      type: "success",
-      onConfirm: () => {
-        router.push("/market");
+      setCustomAlert({
+        message: `${type === "sell" ? "판매글" : "구매희망글"} 등록이 완료되었습니다.`,
+        type: "success",
+        onConfirm: () => {
+          router.push("/market");
+        },
+      });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.replace("/onboarding");
+        return;
       }
-    });
+      const message = e instanceof ApiError ? e.message : "글 등록에 실패했어요.";
+      setCustomAlert({ message, type: "warning" });
+    }
   };
 
   const handleLocationChange = () => {
-    setCustomAlert({
-      message: "동네 위치 변경 기능은 다음 업데이트에 추가됩니다!\n단추가 곧 지원해 드릴게요 🐶",
-      type: "feature"
-    });
+    setIsLocationModalOpen(true);
   };
 
   if (loading) {
@@ -220,17 +266,50 @@ function WritePageContent() {
 
             {/* Category Select */}
             <div className={styles.inputGroup}>
-              <div className={styles.selectWrapper}>
-                <select
-                  className={`${styles.selectField} ${category === "" ? styles.selectPlaceholder : ""}`}
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])}
+              <div className={styles.customSelectWrapper}>
+                <div 
+                  className={`${styles.customSelectTrigger} ${category === "" ? styles.selectPlaceholder : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDropdownOpen(prev => !prev);
+                  }}
                 >
-                  <option value="" disabled hidden>카테고리 선택</option>
-                  {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                  <span>{category || "카테고리 선택"}</span>
+                  <svg 
+                    className={`${styles.chevronIcon} ${isDropdownOpen ? styles.chevronOpen : ""}`} 
+                    width="14" 
+                    height="14" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </div>
+                
+                {isDropdownOpen && (
+                  <div 
+                    className={styles.dropdownOptions}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {CATEGORIES.map(cat => (
+                      <div 
+                        key={cat} 
+                        className={`${styles.dropdownOption} ${category === cat ? styles.dropdownOptionActive : ""}`}
+                        onClick={() => {
+                          setCategory(cat);
+                          setIsDropdownOpen(false);
+                        }}
+                      >
+                        {cat}
+                        {category === cat && <span className={styles.checkedMark}>✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -331,6 +410,81 @@ function WritePageContent() {
               >
                 확인
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Location Selection Modal */}
+        {isLocationModalOpen && (
+          <div className={styles.alertBackdrop}>
+            <div className={styles.locationModal}>
+              <div className={styles.locationModalHeader}>
+                <span className={styles.locationModalTitle}>동네 선택</span>
+                <button 
+                  type="button" 
+                  className={styles.locationModalCloseBtn}
+                  onClick={() => {
+                    setIsLocationModalOpen(false);
+                    setSearchQuery("");
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className={styles.locationSearchBox}>
+                <svg className={styles.locationSearchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input 
+                  type="text" 
+                  placeholder="동 이름으로 검색 (예: 흑석동)"
+                  className={styles.locationSearchInput}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Location List */}
+              <div className={styles.locationList}>
+                {filteredLocations.length > 0 ? (
+                  filteredLocations.map(loc => (
+                    <div 
+                      key={loc}
+                      className={`${styles.locationItem} ${locationText === loc ? styles.locationItemActive : ""}`}
+                      onClick={() => {
+                        setLocationText(loc);
+                        setIsLocationModalOpen(false);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <span>{loc}</span>
+                      {locationText === loc && <span className={styles.locationCheck}>✓</span>}
+                    </div>
+                  ))
+                ) : (
+                  searchQuery.trim() !== "" ? (
+                    <div 
+                      className={styles.locationItemCustom}
+                      onClick={() => {
+                        setLocationText(searchQuery.trim());
+                        setIsLocationModalOpen(false);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <span className={styles.customLocText}>"{searchQuery.trim()}" 추가하여 선택하기</span>
+                      <span className={styles.plusIcon}>+</span>
+                    </div>
+                  ) : (
+                    <div className={styles.locationEmpty}>검색 결과가 없습니다.</div>
+                  )
+                )}
+              </div>
             </div>
           </div>
         )}

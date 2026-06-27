@@ -43,246 +43,705 @@
   }
 }
 
-.scrollWrapper {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  padding-bottom: 100px;
-  width: 100%;
-}
-
 /* Header */
 .headerBlock {
-  align-self: stretch;
-  padding: 20px;
+  flex-shrink: 0;
+  padding: 14px 20px;
   background-color: #ffffff;
   border-bottom: 1px solid #F3F4F6;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  width: 100%;
-}
-
-.headerRow {
-  align-self: stretch;
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   width: 100%;
+  z-index: 10;
 }
 
-.title {
+.logoRow {
+  display: flex;
+  flex-direction: column;
+}
+
+.logoText {
   color: #0e7060;
-  font-size: 20px;
+  font-size: 22px;
   font-family: 'Gumi Romance', sans-serif;
   font-weight: 400;
-  line-height: 30px;
+  line-height: 1.2;
 }
 
-.subtitle {
-  margin: 2px 0 0 0;
-  color: #6B7280;
-  font-size: 13px;
-  font-family: 'Pretendard', sans-serif;
-}
-
-.resetBtn {
-  padding: 6px 12px;
-  background-color: #ffffff;
-  border-radius: 99px;
-  border: 1.5px solid #E5E7EB;
-  color: #6B7280;
-  font-size: 12px;
-  font-family: 'Pretendard', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  outline: none;
-}
-
-.resetBtn:hover {
-  background-color: #fafcfb;
-  border-color: #0e7060;
-  color: #0e7060;
-}
-
-/* Onboarding Section Info Card */
-.infoCard {
-  align-self: stretch;
-  margin: 16px 20px;
-  padding: 16px;
-  background-color: #ffffff;
-  border-radius: 16px;
-  border: 1px solid rgba(14, 112, 96, 0.08);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-}
-
-.welcomeText {
-  color: #0e7060;
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  font-family: 'Pretendard', sans-serif;
-}
-
-.gridInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.infoTile {
-  background-color: #F9FAFB;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1.5px solid #F3F4F6;
+.headerActions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.dogAvatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 22px;
-  object-fit: cover;
-  background: linear-gradient(135deg, #0e7060 0%, #1c9d8a 100%);
+.iconBtn {
+  background: none;
+  border: none;
+  color: #374151;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  outline: none;
+  position: relative;
 }
 
-.tileLabel {
-  margin: 0;
+.iconBtn:hover {
+  background-color: #F3F4F6;
+  color: #0e7060;
+}
+
+.alarmDot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background-color: #EF4444;
+  border-radius: 50%;
+}
+
+.devBtn {
   font-size: 11px;
+  font-weight: 600;
+  background-color: #EBF3F1;
+  color: #0e7060;
+  border: 1px solid rgba(14, 112, 96, 0.15);
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.devBtn:hover {
+  background-color: #DCEBE8;
+}
+
+/* 상단 가로 스크롤 프로필 목록 */
+.topUsersWrapper {
+  flex-shrink: 0;
+  background-color: #ffffff;
+  padding: 12px 0 12px 20px;
+  border-bottom: 1px solid #E5E7EB;
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  z-index: 10;
+}
+
+.topUsersWrapper::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.userChip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.userChipAvatarContainer {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  padding: 2.5px;
+  border: 2px solid #E5E7EB;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.userChipPhoto {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #F3F4F6;
+}
+
+.userChipOnlineBadge {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+}
+
+.userChipActive .userChipAvatarContainer {
+  border-color: #0e7060;
+  transform: scale(1.05);
+}
+
+.userChipName {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4B5563;
+  letter-spacing: -0.2px;
+}
+
+.userChipActive .userChipName {
+  color: #0e7060;
+  font-weight: 700;
+}
+
+/* 지도 영역 wrapper */
+.mapWrapper {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 하단 가까운 견주 바텀시트 */
+.bottomSheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ffffff;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid rgba(14, 112, 96, 0.05);
+}
+
+/* 바텀시트 높이 상태 */
+.sheetCollapsed {
+  transform: translateY(calc(100% - 64px)); /* 헤더 부분인 64px만 노출되도록 접음 */
+}
+
+.sheetExpanded {
+  transform: translateY(0);
+}
+
+.sheetHeader {
+  height: 64px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  border-bottom: 1px solid #F3F4F6;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.dragHandleBar {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 4px;
+  background-color: #D1D5DB;
+  border-radius: 2px;
+}
+
+.sheetTitleArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheetTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.3px;
+}
+
+.sheetCountBadge {
+  background-color: #EBF3F1;
+  color: #0e7060;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.sheetToggleIcon {
+  color: #9CA3AF;
+  transition: transform 0.3s ease;
+}
+
+.sheetExpanded .sheetToggleIcon {
+  transform: rotate(180deg);
+}
+
+.sheetContent {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+  padding: 16px 20px 84px 20px; /* footerBar 높이를 감안한 패딩 */
+  background-color: #ffffff;
+}
+
+/* 바텀시트 내부 필터 칩 */
+.filterRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.filterChip {
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #F3F4F6;
+  color: #4B5563;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterChipActive {
+  background-color: #FAFDFD;
+  color: #0e7060;
+  border-color: #0e7060;
+}
+
+.filterDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* 견주 리스트 아이템 */
+.ownerList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ownerItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #F3F4F6;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.ownerItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ownerItem:hover {
+  opacity: 0.9;
+}
+
+.ownerLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ownerAvatarWrapper {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ownerAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.ownerOnlineDot {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+}
+
+.ownerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ownerNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ownerName {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ownerDistance {
+  font-size: 12px;
+  font-weight: 500;
+  color: #9CA3AF;
+}
+
+.ownerDogInfo {
+  font-size: 13px;
+  color: #6B7280;
+}
+
+.ownerStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-top: 4px;
+  width: fit-content;
+}
+
+.badgeWalkPossible {
+  background-color: #EBF3F1;
+  color: #0e7060;
+}
+
+.badgeWalkResting {
+  background-color: #FFFBEB;
+  color: #D97706;
+}
+
+.lastActiveTime {
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-left: 6px;
+}
+
+.requestBtn {
+  padding: 8px 14px;
+  background-color: #0e7060;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  outline: none;
+}
+
+.requestBtn:hover {
+  background-color: #0c5f51;
+}
+
+/* 견주 상세 프로필 바텀시트 / 모달 */
+.detailModalBackdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2.5px);
+  z-index: 150;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.detailModalCard {
+  width: 100%;
+  background-color: #ffffff;
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+  padding: 32px 24px 28px 24px;
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: 80%;
+  overflow-y: auto;
+  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.detailCloseBar {
+  align-self: center;
+  width: 36px;
+  height: 5px;
+  background-color: #E5E7EB;
+  border-radius: 99px;
+  margin-top: -16px;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detailAvatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #EBF3F1;
+}
+
+.detailTitleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailNameRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.detailName {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.detailDistance {
+  font-size: 13px;
   color: #9CA3AF;
   font-weight: 500;
 }
 
-.tileValue {
-  margin: 2px 0 0 0;
-  font-size: 13px;
+.detailTags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detailTag {
+  font-size: 11px;
   font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.tagBreed {
+  background-color: #EBF7F5;
+  color: #0e7060;
+}
+
+.tagPersonality {
+  background-color: #FFFDF0;
+  color: #B45309;
+}
+
+.tagStatus {
+  background-color: #F3F4F6;
+  color: #4B5563;
+}
+
+.tagStatusActive {
+  background-color: #EBF3F1;
+  color: #0e7060;
+}
+
+.detailSection {
+  margin-bottom: 20px;
+}
+
+.detailLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9CA3AF;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.detailStatusMessage {
+  background-color: #F9FAFB;
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* 최근 산책 기록 */
+.walkRecordList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.walkRecordItem {
+  background-color: #ffffff;
+  border: 1px solid #F3F4F6;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.walkRecordLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.walkRecordDate {
+  font-size: 13px;
+  font-weight: 700;
   color: #1F2937;
 }
 
-.tileSub {
-  margin: 2px 0 0 0;
+.walkRecordPartner {
   font-size: 11px;
-  color: #6B7280;
+  color: #9CA3AF;
 }
 
-/* Sections inside home */
-.sectionBlock {
-  align-self: stretch;
-  padding: 0 20px 20px 20px;
-  width: 100%;
+.walkRecordRight {
+  text-align: right;
 }
 
-.sectionTitle {
+.walkRecordDuration {
   font-size: 14px;
-  font-weight: 700;
-  color: #374151;
-  margin: 0 0 10px 0;
-  font-family: 'Pretendard', sans-serif;
+  font-weight: 800;
+  color: #0e7060;
 }
 
-.preBlock {
-  background: #ffffff;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #E5E7EB;
-  font-size: 12px;
-  color: #4B5563;
-  overflow-x: auto;
-  margin: 0;
-  font-family: monospace;
+.walkRecordDist {
+  font-size: 11px;
+  color: #9CA3AF;
 }
 
-.formRow {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+.detailActionBtn {
   width: 100%;
-}
-
-.formInput {
-  flex: 1;
-  height: 40px;
-  border: 1.5px solid #E5E7EB;
-  border-radius: 10px;
-  padding: 0 12px;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s;
-  background-color: #ffffff;
-}
-
-.formInput:focus {
-  border-color: #0e7060;
-}
-
-.addBtn {
-  height: 40px;
-  padding: 0 16px;
+  height: 52px;
   background-color: #0e7060;
   color: #ffffff;
-  font-weight: 600;
-  font-size: 13px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
   border: none;
-  border-radius: 10px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(14, 112, 96, 0.2);
   transition: background-color 0.2s;
+  margin-top: 10px;
+  outline: none;
 }
 
-.addBtn:hover {
+.detailActionBtn:hover {
   background-color: #0c5f51;
 }
 
-.sampleList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  background-color: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #E5E7EB;
-  overflow: hidden;
-  width: 100%;
+/* 나의 산책 상태 설정 바텀시트 */
+.statusOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
-.sampleItem {
-  padding: 12px 16px;
-  border-bottom: 1px solid #F3F4F6;
-  font-size: 13px;
-  color: #374151;
-}
-
-.sampleItem:last-child {
-  border-bottom: none;
-}
-
-.sampleItem small {
-  color: #9CA3AF;
-  margin-left: 4px;
-}
-
-.emptyText {
+.statusOptionCard {
+  border: 1.5px solid #F3F4F6;
+  border-radius: 16px;
   padding: 16px;
-  text-align: center;
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.statusOptionCardActive {
+  border-color: #0e7060;
+  background-color: #FAFDFD;
+}
+
+.statusOptionLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.statusDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.statusOptionMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statusOptionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.statusOptionSub {
+  font-size: 11px;
   color: #9CA3AF;
 }
 
-.errorText {
-  color: #EF4444;
-  font-size: 12px;
-  margin-top: 12px;
-  line-height: 1.4;
+.statusRadioCircle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #E5E7EB;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Alert Modals */
-.alertBackdrop {
+.statusOptionCardActive .statusRadioCircle {
+  border-color: #0e7060;
+}
+
+.statusRadioDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #0e7060;
+}
+
+/* 개발자 설정 백엔드 모달 */
+.devModalBackdrop {
   position: absolute;
   top: 0;
   left: 0;
@@ -291,6 +750,78 @@
   background-color: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
   z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.devModalCard {
+  width: 85%;
+  max-height: 80%;
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  overflow-y: auto;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.devModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #F3F4F6;
+  padding-bottom: 12px;
+}
+
+.devModalTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7060;
+}
+
+.devCloseBtn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #9CA3AF;
+}
+
+/* 기존 CSS 모달 등 공통 애니메이션 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Alert/Confirm */
+.alertBackdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 210;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -320,10 +851,9 @@
 
 .alertMessage {
   color: #1F2937;
-  font-size: 15px;
-  font-family: 'Pretendard', sans-serif;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.5;
   text-align: center;
   margin-bottom: 20px;
   white-space: pre-line;
@@ -337,7 +867,6 @@
   border-radius: 22px;
   font-weight: 700;
   font-size: 14px;
-  font-family: 'Pretendard', sans-serif;
   border: none;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -363,7 +892,6 @@
   border-radius: 22px;
   font-weight: 700;
   font-size: 14px;
-  font-family: 'Pretendard', sans-serif;
   border: none;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -382,7 +910,6 @@
   border-radius: 22px;
   font-weight: 700;
   font-size: 14px;
-  font-family: 'Pretendard', sans-serif;
   border: none;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -391,20 +918,4 @@
 
 .confirmOkBtn:hover {
   background-color: #0c5f51;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleUp {
-  from {
-    transform: scale(0.85);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
 }

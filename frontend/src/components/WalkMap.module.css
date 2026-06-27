@@ -1,0 +1,274 @@
+.mapContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #e3ece9;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+}
+
+/* 커스텀 마커 오버레이 */
+.customMarker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  transform: translateY(-20px); /* 중심점이 아래 발끝에 맞도록 조정 */
+  transition: transform 0.2s ease;
+}
+
+.customMarker:hover {
+  transform: translateY(-24px) scale(1.05);
+}
+
+.customMarkerActive {
+  transform: translateY(-24px) scale(1.1);
+  z-index: 10;
+}
+
+.profileContainer {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  padding: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #ffffff;
+}
+
+/* 산책 가능일 때 테두리 색상 */
+.borderPossible {
+  border-color: #10B981;
+}
+
+/* 휴식 중일 때 테두리 색상 */
+.borderResting {
+  border-color: #F59E0B;
+}
+
+/* 산책 불가일 때 테두리 색상 */
+.borderImpossible {
+  border-color: #9CA3AF;
+}
+
+.dogPhoto {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.statusBadge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.badgePossible {
+  background-color: #10B981;
+}
+
+.badgeResting {
+  background-color: #F59E0B;
+}
+
+.badgeImpossible {
+  background-color: #9CA3AF;
+}
+
+/* 프로필 핀 지지선 */
+.pinLine {
+  width: 2px;
+  height: 15px;
+  background-color: #ffffff;
+  box-shadow: 1px 0 2px rgba(0,0,0,0.1);
+  margin-top: -1px;
+  z-index: 1;
+}
+
+.pinDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2.5px solid #0e7060;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  margin-top: -3px;
+  z-index: 2;
+}
+
+.nameLabel {
+  margin-top: 6px;
+  background-color: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
+/* 내 위치 표시 마커 (에메랄드 펄스 포인트) */
+.myLocationContainer {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.myLocationCenter {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #0e7060;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 6px rgba(14, 112, 96, 0.6);
+  z-index: 2;
+}
+
+.myLocationPulse {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(14, 112, 96, 0.3);
+  animation: pulse 1.8s infinite ease-out;
+  z-index: 1;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* 지도 컨트롤 디자인 */
+.myLocationBtn {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 1.5px solid rgba(14, 112, 96, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 10;
+  color: #374151;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.myLocationBtn:hover {
+  color: #0e7060;
+  background-color: #FAFDFD;
+  transform: scale(1.05);
+}
+
+.zoomControl {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  width: 36px;
+  border-radius: 12px;
+  background-color: #ffffff;
+  border: 1.5px solid rgba(14, 112, 96, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.zoomBtn {
+  width: 100%;
+  height: 38px;
+  background: none;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: #4B5563;
+  transition: background-color 0.2s;
+  outline: none;
+}
+
+.zoomBtn:hover {
+  background-color: #F9FAFB;
+  color: #0e7060;
+}
+
+.zoomDivider {
+  height: 1px;
+  background-color: #E5E7EB;
+  margin: 0 6px;
+}
+
+/* 환경변수 누락 시 Fallback 디자인 */
+.fallbackContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background-color: #EBF3F1;
+  padding: 24px;
+  text-align: center;
+}
+
+.fallbackTitle {
+  color: #0e7060;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.fallbackText {
+  color: #6B7280;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.fallbackMapMock {
+  width: 100%;
+  max-width: 300px;
+  height: 160px;
+  border-radius: 16px;
+  border: 2px dashed rgba(14, 112, 96, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #9CA3AF;
+  font-size: 36px;
+  background-color: rgba(255, 255, 255, 0.4);
+}

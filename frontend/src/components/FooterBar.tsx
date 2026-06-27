@@ -20,14 +20,8 @@ export default function FooterBar({ activeTab, onFeatureAlert }: FooterBarProps)
       router.push("/mypage");
     } else if (tab === "market") {
       router.push("/market");
-    } else {
-      // 미구현 탭 클릭 처리 (커뮤니티)
-      const featureName = "커뮤니티";
-      if (onFeatureAlert) {
-        onFeatureAlert(featureName);
-      } else {
-        alert(`"${featureName}" 서비스는 준비 중입니다!`);
-      }
+    } else if (tab === "community") {
+      router.push("/community");
     }
   };
 

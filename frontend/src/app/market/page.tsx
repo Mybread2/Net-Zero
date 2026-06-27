@@ -4,17 +4,98 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./market.module.css";
 import FooterBar from "@/components/FooterBar";
-import { 
-  getMarketItems, 
-  getShopItems, 
-  getCartItems, 
-  addToCart, 
-  type MarketItem, 
-  type ShopItem 
+import {
+  getCartItems,
+  addToCart,
+  type MarketItem,
+  type ShopItem,
 } from "@/lib/marketMock";
+import {
+  ApiError,
+  marketApi,
+  marketplaceApi,
+  type MarketCategory,
+  type MarketListItem,
+  type MarketplaceCategory,
+  type MarketplaceProduct,
+  type TradeType,
+} from "@/lib/api";
+import { getToken, isOnboarded } from "@/lib/auth";
 
 const CATEGORIES_USED = ["전체", "먹거리", "장난감", "생활용품", "의류", "기타"] as const;
 const CATEGORIES_SHOP = ["전체", "먹거리", "생활용품", "기타"] as const;
+
+const USED_CATEGORY_TO_ENUM: Record<typeof CATEGORIES_USED[number], MarketCategory | undefined> = {
+  전체: undefined,
+  먹거리: "FOOD",
+  장난감: "TOY",
+  생활용품: "DAILY",
+  의류: "CLOTHING",
+  기타: "ETC",
+};
+
+const USED_ENUM_TO_LABEL: Record<MarketCategory, MarketItem["category"]> = {
+  FOOD: "먹거리",
+  TOY: "장난감",
+  DAILY: "생활용품",
+  CLOTHING: "의류",
+  ETC: "기타",
+};
+
+const SHOP_CATEGORY_TO_ENUM: Record<typeof CATEGORIES_SHOP[number], MarketplaceCategory | undefined> = {
+  전체: undefined,
+  먹거리: "FOOD",
+  생활용품: "DAILY",
+  기타: "ETC",
+};
+
+// 백엔드 MarketListItem (SELL/BUY 둘 다 섞여 옴) → UI MarketItem 어댑터.
+// 작성자/매너온도/조회수 등은 목록 응답에 없으므로 기본값을 채운다.
+function adaptMarketItem(item: MarketListItem, fallbackCategory: MarketItem["category"] = "기타"): MarketItem {
+  const isSell = item.tradeType === "SELL";
+  return {
+    id: item.itemId,
+    title: item.title,
+    type: isSell ? "sell" : "buy",
+    category: fallbackCategory,
+    price: item.price ?? 0,
+    priceSuggestible: false,
+    location: "",
+    timeText: item.createdAt ? formatRelativeTime(item.createdAt) : "",
+    images: item.thumbnailUrl ? [item.thumbnailUrl] : [],
+    likes: item.heartCount ?? 0,
+    comments: 0,
+    views: 0,
+    description: item.content ?? "",
+    sellerName: item.author?.nickname ?? "",
+    sellerTemp: 36.5,
+    isCompleted: false,
+  };
+}
+
+// 백엔드 MarketplaceProduct → UI ShopItem 어댑터.
+function adaptShopItem(p: MarketplaceProduct, fallbackCategory: ShopItem["category"]): ShopItem {
+  return {
+    id: p.productId,
+    title: p.title,
+    brandName: p.company,
+    price: p.price,
+    rating: p.rating,
+    reviewsCount: p.ratingCount,
+    category: fallbackCategory,
+    images: p.imageUrl ? [p.imageUrl] : [],
+    tags: p.lowCarbonSummary ? [p.lowCarbonSummary] : [],
+    isEco: true,
+  };
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffSec < 60) return "방금 전";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}분 전`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}시간 전`;
+  return `${Math.floor(diffSec / 86400)}일 전`;
+}
 
 export default function MarketMain() {
   const router = useRouter();
@@ -54,24 +135,81 @@ export default function MarketMain() {
     setCartCount(totalQty);
   };
 
-  // 온보딩 완료 확인 및 초기 데이터 바인딩
+  // 인증/온보딩 가드 + 장바구니 카운트 리스너
   useEffect(() => {
-    const isCompleted = localStorage.getItem("dangsquare_onboarding_completed");
-    if (isCompleted !== "true") {
-      router.push("/onboarding");
-    } else {
-      setUsedItems(getMarketItems());
-      setShopItems(getShopItems());
-      updateCartCount();
-      setLoading(false);
+    if (!getToken()) {
+      router.replace("/onboarding");
+      return;
     }
-
-    // 장바구니 업데이트 이벤트 리스너 등록
+    if (!isOnboarded()) {
+      router.replace("/onboarding");
+      return;
+    }
+    updateCartCount();
     window.addEventListener("dangsquare_cart_updated", updateCartCount);
     return () => {
       window.removeEventListener("dangsquare_cart_updated", updateCartCount);
     };
   }, [router]);
+
+  // 중고거래 목록: 카테고리/유형 필터에 따라 백엔드 호출.
+  useEffect(() => {
+    const tradeType: TradeType | undefined =
+      filterTypeUsed === "sell" ? "SELL" : filterTypeUsed === "buy" ? "BUY" : undefined;
+    const category = USED_CATEGORY_TO_ENUM[selectedCategoryUsed as typeof CATEGORIES_USED[number]];
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const page = await marketApi.list({
+          tradeType,
+          category,
+          status: hideCompleted ? "ON_SALE" : undefined,
+          size: 50,
+        });
+        if (cancelled) return;
+        const fallbackCategory = category ? USED_ENUM_TO_LABEL[category] : "기타";
+        setUsedItems(page.content.map((i) => adaptMarketItem(i, fallbackCategory)));
+        setLoading(false);
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 401) {
+          router.replace("/onboarding");
+          return;
+        }
+        setUsedItems([]);
+        setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [filterTypeUsed, selectedCategoryUsed, hideCompleted, router]);
+
+  // 마켓플레이스 상품 목록: 카테고리에 따라 백엔드 호출.
+  useEffect(() => {
+    const category = SHOP_CATEGORY_TO_ENUM[selectedCategoryShop as typeof CATEGORIES_SHOP[number]];
+    const labelCategory = (selectedCategoryShop === "전체" ? "기타" : selectedCategoryShop) as ShopItem["category"];
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const page = await marketplaceApi.list(category, 0, 50);
+        if (cancelled) return;
+        setShopItems(page.content.map((p) => adaptShopItem(p, labelCategory)));
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 401) {
+          router.replace("/onboarding");
+          return;
+        }
+        setShopItems([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCategoryShop, router]);
 
   // 커스텀 알림 처리
   const handleFeatureAlert = (featureName: string) => {
@@ -475,57 +613,57 @@ export default function MarketMain() {
         {/* Footer Bar */}
         <FooterBar activeTab="market" onFeatureAlert={handleFeatureAlert} />
 
-        {/* Bottom Sheet Menu */}
+        {/* Write Menu Modal */}
         {isBottomSheetOpen && activeMainTab === "used" && (
           <div 
             className={styles.modalBackdrop}
             onClick={() => setIsBottomSheetOpen(false)}
           >
             <div 
-              className={styles.bottomSheet}
+              className={styles.writeModal}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className={styles.sheetHeader} />
-              
               <div 
-                className={styles.sheetOption}
+                className={styles.writeOptionSell}
                 onClick={() => {
                   setIsBottomSheetOpen(false);
                   router.push("/market/write?type=sell");
                 }}
               >
-                <div className={styles.optionIcon}>📦</div>
-                <div className={styles.optionTextContainer}>
-                  <span className={styles.optionTitle}>상품판매글 등록하기</span>
-                  <span className={styles.optionDesc}>내 물건을 판매해요</span>
+                <div className={styles.writeOptionIcon}>📦</div>
+                <div className={styles.writeOptionText}>
+                  <span className={styles.writeOptionTitle}>상품판매글 등록하기</span>
+                  <span className={styles.writeOptionDesc}>내 물건을 판매해요</span>
                 </div>
               </div>
 
+              <div className={styles.writeDivider} />
+
               <div 
-                className={styles.sheetOption}
+                className={styles.writeOptionBuy}
                 onClick={() => {
                   setIsBottomSheetOpen(false);
                   router.push("/market/write?type=buy");
                 }}
               >
-                <div className={styles.optionIcon}>🔍</div>
-                <div className={styles.optionTextContainer}>
-                  <span className={styles.optionTitle}>구매희망글 등록하기</span>
-                  <span className={styles.optionDesc}>원하는 물건을 찾아요</span>
+                <div className={styles.writeOptionIcon}>🔍</div>
+                <div className={styles.writeOptionText}>
+                  <span className={styles.writeOptionTitle}>구매희망글 등록하기</span>
+                  <span className={styles.writeOptionDesc}>원하는 물건을 찾아요</span>
                 </div>
               </div>
-
-              <button 
-                type="button" 
-                className={styles.sheetCloseFab}
-                onClick={() => setIsBottomSheetOpen(false)}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
             </div>
+
+            <button 
+              type="button" 
+              className={styles.sheetCloseFab}
+              onClick={() => setIsBottomSheetOpen(false)}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
         )}
 

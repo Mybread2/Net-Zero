@@ -4,6 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import styles from "./onboarding.module.css";
+import { userApi, ApiError, type DogTemperament, type Gender } from "@/lib/api";
+import {
+  consumeAuthFromQuery,
+  getToken,
+  isOnboarded,
+  setOnboarded,
+  startGoogleLogin,
+} from "@/lib/auth";
 
 type StepType = "splash" | 1 | 2 | 3 | 4;
 
@@ -49,43 +57,88 @@ export default function Onboarding() {
   const [dogPhoto, setDogPhoto] = useState<string | null>(null);
   const [isActionSheetOpen, setIsActionSheetOpen] = useState(false);
 
+  // 백엔드 제출 상태
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // OAuth 콜백으로 돌아온 경우 URL 의 ?token=... 을 흡수해 저장.
+  // 토큰이 있고 이미 온보딩 끝났으면 / 로 보낸다. 토큰이 없으면 splash 의 Google 로그인 버튼을 노출.
+  useEffect(() => {
+    const { onboarded } = consumeAuthFromQuery();
+    if (getToken() && (onboarded || isOnboarded())) {
+      router.replace("/");
+    }
+  }, [router]);
+
   // 견종 선택 바텀 시트 상태
   const [isBreedSheetOpen, setIsBreedSheetOpen] = useState(false);
   const [customBreed, setCustomBreed] = useState("");
   const [showCustomBreedInput, setShowCustomBreedInput] = useState(false);
 
-  // 스플래시 화면 2.5초 후 1단계 전환
+  // 스플래시 화면: 토큰이 이미 있으면 곧장 step 1(견주 프로필 입력)로 진입.
+  // 토큰이 없으면 Google 로그인 버튼을 띄우고 사용자 클릭을 기다린다.
   useEffect(() => {
-    if (step === "splash") {
-      const timer = setTimeout(() => {
-        setStep(1);
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
+    if (step !== "splash") return;
+    if (!getToken()) return;
+    const timer = setTimeout(() => setStep(1), 1500);
+    return () => clearTimeout(timer);
   }, [step]);
 
-  // 온보딩 완료 처리
-  const handleComplete = () => {
-    const onboardingData = {
-      owner: {
-        name: ownerName,
-        gender: ownerGender,
-      },
-      dog: {
-        name: dogName,
-        gender: dogGender,
-        breed: dogBreed === "기타 (직접 입력)" ? customBreed : dogBreed,
-        personality: dogPersonality,
-        photo: dogPhoto,
-      },
-      completedAt: new Date().toISOString(),
+  // 온보딩 완료 처리: 백엔드 PATCH /api/users/me 호출 후 / 로 이동.
+  // 사진은 백엔드 업로드(presign)가 별도 작업이라 일단 localStorage 캐시로만 유지한다.
+  const handleComplete = async () => {
+    if (submitting) return;
+
+    const finalBreed = dogBreed === "기타 (직접 입력)" ? customBreed.trim() : dogBreed;
+    const temperamentMap: Record<typeof dogPersonality, DogTemperament> = {
+      active: "ACTIVE",
+      warm: "FRIENDLY",
+      shy: "SHY",
+      "": "ETC",
     };
-    
-    localStorage.setItem("dangsquare_onboarding_completed", "true");
-    localStorage.setItem("dangsquare_onboarding_data", JSON.stringify(onboardingData));
-    
-    // 홈 화면으로 리다이렉트
-    router.push("/");
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await userApi.update({
+        nickname: ownerName.trim(),
+        gender: (ownerGender === "male" ? "MALE" : "FEMALE") as Gender,
+        hasDog: true,
+        dog: {
+          name: dogName.trim(),
+          gender: (dogGender === "male" ? "MALE" : "FEMALE") as Gender,
+          breed: finalBreed,
+          temperament: temperamentMap[dogPersonality],
+        },
+      });
+
+      setOnboarded(true);
+
+      // 페이지들이 사진/성향 등을 즉시 참조할 수 있게 캐시는 그대로 둔다.
+      const onboardingData = {
+        owner: { name: ownerName, gender: ownerGender },
+        dog: {
+          name: dogName,
+          gender: dogGender,
+          breed: finalBreed,
+          personality: dogPersonality,
+          photo: dogPhoto,
+        },
+        completedAt: new Date().toISOString(),
+      };
+      localStorage.setItem("dangsquare_onboarding_completed", "true");
+      localStorage.setItem("dangsquare_onboarding_data", JSON.stringify(onboardingData));
+
+      router.push("/");
+    } catch (e) {
+      const message = e instanceof ApiError ? e.message : "프로필 저장 중 오류가 발생했습니다.";
+      setSubmitError(message);
+      if (e instanceof ApiError && e.status === 401) {
+        router.replace("/onboarding");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // 다음 버튼 활성화 여부
@@ -132,27 +185,77 @@ export default function Onboarding() {
 
   // --- 렌더링 함수들 ---
 
-  // Splash Screen
+  // Splash Screen — 토큰 없으면 Google 로그인 버튼, 있으면 클릭하면 즉시 step 1로.
   if (step === "splash") {
+    const hasToken = typeof window !== "undefined" && getToken() !== null;
+    const handleSplashClick = () => {
+      if (hasToken) setStep(1);
+    };
     return (
-      <div className={styles.container} onClick={() => setStep(1)}>
+      <div className={styles.container} onClick={handleSplashClick}>
         <div className={styles.card}>
           <div className={styles.splash}>
             <div className={styles.splashHeader}>
               <p className={styles.splashSubtitle}>발걸음마다 싱그러운 에코 라이프</p>
               <h1 className={styles.splashLogo}>Dangsquare</h1>
             </div>
-            
+
             <div className={styles.mascotContainer}>
-              <Image 
-                src="/dangsquare_mascot_official.png" 
-                alt="Dangsquare Mascot" 
+              <Image
+                src="/dangsquare_mascot_official.png"
+                alt="Dangsquare Mascot"
                 fill
                 priority
                 sizes="(max-width: 480px) 100vw, 450px"
                 className={styles.mascotImage}
               />
             </div>
+
+            {!hasToken && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "48px",
+                  left: 0,
+                  right: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "10px",
+                  zIndex: 3,
+                  padding: "0 24px",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={startGoogleLogin}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "10px",
+                    width: "100%",
+                    maxWidth: "320px",
+                    height: "52px",
+                    backgroundColor: "#ffffff",
+                    color: "#171d1c",
+                    border: "none",
+                    borderRadius: "26px",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.18)",
+                  }}
+                >
+                  <GoogleLogo />
+                  Google로 시작하기
+                </button>
+                <span style={{ color: "rgba(255,255,255,0.85)", fontSize: "12px" }}>
+                  계속 진행하면 Dangsquare 약관에 동의하게 됩니다
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -399,13 +502,23 @@ export default function Onboarding() {
                 입력 완료
               </button>
             ) : step === 4 ? (
-              <button
-                type="button"
-                onClick={handleComplete}
-                className={styles.primaryButton}
-              >
-                산책 친구 찾으러 가기
-              </button>
+              <>
+                {submitError && (
+                  <div style={{
+                    color: "#B91C1C", fontSize: 12, textAlign: "center", marginBottom: 8,
+                  }}>
+                    {submitError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleComplete}
+                  disabled={submitting}
+                  className={`${styles.primaryButton} ${submitting ? styles.primaryButtonDisabled : ""}`}
+                >
+                  {submitting ? "저장 중…" : "산책 친구 찾으러 가기"}
+                </button>
+              </>
             ) : (
               <button
                 type="button"
@@ -501,5 +614,16 @@ export default function Onboarding() {
         )}
       </div>
     </div>
+  );
+}
+
+function GoogleLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.972 32.91 29.444 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.421 0-9.93-3.067-11.288-7.466l-6.5 5.006C9.566 39.556 16.227 44 24 44z" />
+      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.094 5.571l.001-.001 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+    </svg>
   );
 }

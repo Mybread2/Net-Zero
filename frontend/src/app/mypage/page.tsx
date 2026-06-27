@@ -4,6 +4,66 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./mypage.module.css";
 import FooterBar from "@/components/FooterBar";
+import {
+  ApiError,
+  userApi,
+  type DogTemperament,
+  type Gender,
+  type UserMeDto,
+  type UserUpdatePayload,
+} from "@/lib/api";
+import { clearAuth, getToken } from "@/lib/auth";
+
+type Personality = "active" | "warm" | "shy" | "";
+
+function temperamentToPersonality(t: DogTemperament | undefined | null): Personality {
+  switch (t) {
+    case "ACTIVE":
+      return "active";
+    case "FRIENDLY":
+    case "CALM":
+      return "warm";
+    case "SHY":
+    case "INDEPENDENT":
+    case "ETC":
+      return "shy";
+    default:
+      return "";
+  }
+}
+
+function personalityToTemperament(p: Personality): DogTemperament {
+  switch (p) {
+    case "active": return "ACTIVE";
+    case "warm": return "FRIENDLY";
+    case "shy": return "SHY";
+    default: return "ETC";
+  }
+}
+
+function genderApiToUi(g: Gender | null | undefined): "male" | "female" | "" {
+  if (g === "MALE") return "male";
+  if (g === "FEMALE") return "female";
+  return "";
+}
+
+function meToOnboardingData(me: UserMeDto, fallbackPhoto: string | null): OnboardingData {
+  const dog = me.dogs[0];
+  return {
+    owner: {
+      name: me.nickname ?? "",
+      gender: genderApiToUi(me.gender),
+    },
+    dog: {
+      name: dog?.name ?? "",
+      gender: genderApiToUi(dog?.gender),
+      breed: dog?.breed ?? "",
+      personality: temperamentToPersonality(dog?.temperament),
+      photo: dog?.imageUrl ?? fallbackPhoto,
+    },
+    completedAt: me.lastActiveAt ?? new Date().toISOString(),
+  };
+}
 
 const BREED_LIST = [
   "말티즈",
@@ -64,32 +124,101 @@ export default function MyPage() {
   const [editDogPersonality, setEditDogPersonality] = useState<"active" | "warm" | "shy" | "">("");
   const [editDogPhoto, setEditDogPhoto] = useState<string | null>(null);
 
-  // 온보딩 완료 여부 체크 및 데이터 바인딩
+  // 인증 가드 + 백엔드에서 본인 정보 로드. 로컬 캐시는 사진 폴백/초기 표시용.
   useEffect(() => {
-    const isCompleted = localStorage.getItem("dangsquare_onboarding_completed");
-    if (isCompleted !== "true") {
-      router.push("/onboarding");
-    } else {
-      const storedData = localStorage.getItem("dangsquare_onboarding_data");
-      if (storedData) {
-        try {
-          const parsed = JSON.parse(storedData) as OnboardingData;
-          setData(parsed);
-          
-          // 수정 폼 초기값 채우기
-          setEditOwnerName(parsed.owner.name);
-          setEditOwnerGender(parsed.owner.gender);
-          setEditDogName(parsed.dog.name);
-          setEditDogBreed(parsed.dog.breed);
-          setEditDogPersonality(parsed.dog.personality);
-          setEditDogPhoto(parsed.dog.photo);
-        } catch (e) {
-          console.error("데이터 파싱 실패", e);
-        }
-      }
-      setLoading(false);
+    if (!getToken()) {
+      router.replace("/onboarding");
+      return;
     }
+
+    // 로컬 캐시로 먼저 채워 깜빡임 방지.
+    const storedData = localStorage.getItem("dangsquare_onboarding_data");
+    let cachedPhoto: string | null = null;
+    if (storedData) {
+      try {
+        const parsed = JSON.parse(storedData) as OnboardingData;
+        cachedPhoto = parsed.dog.photo;
+        setData(parsed);
+        setEditOwnerName(parsed.owner.name);
+        setEditOwnerGender(parsed.owner.gender);
+        setEditDogName(parsed.dog.name);
+        setEditDogBreed(parsed.dog.breed);
+        setEditDogPersonality(parsed.dog.personality);
+        setEditDogPhoto(parsed.dog.photo);
+      } catch (e) {
+        console.error("캐시 파싱 실패", e);
+      }
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await userApi.me();
+        if (cancelled) return;
+        if (!me.nickname) {
+          router.replace("/onboarding");
+          return;
+        }
+        const next = meToOnboardingData(me, cachedPhoto);
+        setData(next);
+        setEditOwnerName(next.owner.name);
+        setEditOwnerGender(next.owner.gender);
+        setEditDogName(next.dog.name);
+        setEditDogBreed(next.dog.breed);
+        setEditDogPersonality(next.dog.personality);
+        setEditDogPhoto(next.dog.photo);
+        localStorage.setItem("dangsquare_onboarding_data", JSON.stringify(next));
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 401) {
+          router.replace("/onboarding");
+          return;
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
+
+  // 백엔드 PATCH 헬퍼: 현재 폼 상태로 프로필을 갱신하고 로컬 캐시도 동기화.
+  const persistUpdate = async (next: OnboardingData): Promise<boolean> => {
+    const ownerGender = next.owner.gender;
+    if (ownerGender !== "male" && ownerGender !== "female") {
+      setCustomAlert({ message: "성별을 선택해주세요.", type: "warning" });
+      return false;
+    }
+    const dogGender = next.dog.gender;
+
+    const payload: UserUpdatePayload = {
+      nickname: next.owner.name.trim(),
+      gender: ownerGender === "male" ? "MALE" : "FEMALE",
+      hasDog: true,
+      dog: {
+        name: next.dog.name.trim(),
+        gender: (dogGender === "male" ? "MALE" : "FEMALE") as Gender,
+        breed: next.dog.breed,
+        temperament: personalityToTemperament(next.dog.personality),
+      },
+    };
+
+    try {
+      await userApi.update(payload);
+      localStorage.setItem("dangsquare_onboarding_data", JSON.stringify(next));
+      setData(next);
+      return true;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.replace("/onboarding");
+        return false;
+      }
+      const message = e instanceof ApiError ? e.message : "수정에 실패했어요.";
+      setCustomAlert({ message, type: "warning" });
+      return false;
+    }
+  };
 
   // 모달 닫기 및 임시 수정값 취소(리셋) 핸들러
   const handleCloseModal = () => {
@@ -104,18 +233,15 @@ export default function MyPage() {
     }
   };
 
-  // 프로필 업데이트 완료 핸들러
-  const handleSaveProfile = () => {
+  // 프로필 업데이트 완료 핸들러 — 백엔드 PATCH 후 로컬 캐시 동기화.
+  const handleSaveProfile = async () => {
     if (!editOwnerName.trim() || !editOwnerGender || !editDogName.trim() || !editDogBreed || !editDogPersonality) {
       setCustomAlert({ message: "모든 프로필 정보를 올바르게 입력해주세요.", type: "warning" });
       return;
     }
 
     const updatedData: OnboardingData = {
-      owner: {
-        name: editOwnerName.trim(),
-        gender: editOwnerGender,
-      },
+      owner: { name: editOwnerName.trim(), gender: editOwnerGender },
       dog: {
         name: editDogName.trim(),
         gender: data?.dog.gender || "male",
@@ -126,18 +252,18 @@ export default function MyPage() {
       completedAt: data?.completedAt || new Date().toISOString(),
     };
 
-    localStorage.setItem("dangsquare_onboarding_data", JSON.stringify(updatedData));
-    setData(updatedData);
-    setActiveEditField(null);
-    setCustomAlert({ message: "프로필 정보가 수정되었습니다.", type: "success" });
+    if (await persistUpdate(updatedData)) {
+      setActiveEditField(null);
+      setCustomAlert({ message: "프로필 정보가 수정되었습니다.", type: "success" });
+    }
   };
 
-  // 개별 필드 단독 업데이트 핸들러
-  const handleSaveField = (field: "ownerName" | "ownerGender" | "dogName" | "dogBreed" | "dogPersonality") => {
+  // 개별 필드 단독 업데이트 — 백엔드 PATCH (필드별 부분 수정도 nickname/gender/hasDog/dog 가 모두 필요한 검증이라 전체 페이로드 전송).
+  const handleSaveField = async (field: "ownerName" | "ownerGender" | "dogName" | "dogBreed" | "dogPersonality") => {
     if (!data) return;
 
-    let updatedOwner = { ...data.owner };
-    let updatedDog = { ...data.dog };
+    const updatedOwner = { ...data.owner };
+    const updatedDog = { ...data.dog };
 
     switch (field) {
       case "ownerName":
@@ -183,10 +309,10 @@ export default function MyPage() {
       completedAt: data.completedAt || new Date().toISOString(),
     };
 
-    localStorage.setItem("dangsquare_onboarding_data", JSON.stringify(updatedData));
-    setData(updatedData);
-    setActiveEditField(null);
-    setCustomAlert({ message: "변경되었습니다.", type: "success" });
+    if (await persistUpdate(updatedData)) {
+      setActiveEditField(null);
+      setCustomAlert({ message: "변경되었습니다.", type: "success" });
+    }
   };
 
   // 이미지 업로드
@@ -201,31 +327,29 @@ export default function MyPage() {
     }
   };
 
-  // 로그아웃
+  // 로그아웃: 토큰/캐시 정리 후 로그인으로.
   const handleLogout = () => {
     setCustomConfirm({
       message: "로그아웃 하시겠습니까?",
       onConfirm: () => {
-        localStorage.removeItem("dangsquare_onboarding_completed");
-        localStorage.removeItem("dangsquare_onboarding_data");
-        router.push("/onboarding");
-      }
+        clearAuth();
+        router.replace("/onboarding");
+      },
     });
   };
 
-  // 회원 탈퇴
+  // 회원 탈퇴: 백엔드 미구현 → 토큰만 비우고 안내.
   const handleWithdraw = () => {
     setCustomConfirm({
-      message: "정말로 회원 탈퇴를 하시겠습니까?\n모든 온보딩 데이터가 삭제되고 즉시 로그아웃됩니다.",
+      message: "정말로 회원 탈퇴를 하시겠습니까?\n로컬 캐시가 삭제되고 즉시 로그아웃됩니다.\n(서버 계정 삭제는 추후 지원 예정)",
       onConfirm: () => {
-        localStorage.removeItem("dangsquare_onboarding_completed");
-        localStorage.removeItem("dangsquare_onboarding_data");
+        clearAuth();
         setCustomAlert({
-          message: "회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.",
+          message: "로그아웃되었습니다. 이용해주셔서 감사합니다.",
           type: "success",
-          onConfirm: () => router.push("/onboarding"),
+          onConfirm: () => router.replace("/onboarding"),
         });
-      }
+      },
     });
   };
 
