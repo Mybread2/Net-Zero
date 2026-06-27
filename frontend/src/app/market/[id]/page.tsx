@@ -4,7 +4,39 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import styles from "./detail.module.css";
 import FooterBar from "@/components/FooterBar";
-import { getMarketItemById, updateMarketItem, type MarketItem } from "@/lib/marketMock";
+import { type MarketItem } from "@/lib/marketMock";
+import { ApiError, marketApi, type MarketDetail } from "@/lib/api";
+import { getToken } from "@/lib/auth";
+
+function adaptDetail(d: MarketDetail): MarketItem {
+  return {
+    id: d.itemId,
+    title: d.title,
+    type: d.tradeType === "SELL" ? "sell" : "buy",
+    category: "기타",
+    price: d.price ?? 0,
+    priceSuggestible: false,
+    location: "",
+    timeText: formatRelativeTime(d.createdAt),
+    images: d.images.length > 0 ? d.images : ["/dangsquare_mascot_official.png"],
+    likes: d.heartCount,
+    comments: 0,
+    views: 0,
+    description: d.content,
+    sellerName: d.author.nickname,
+    sellerAvatar: d.author.profileImageUrl ?? undefined,
+    sellerTemp: 36.5,
+    isCompleted: d.status === "SOLD",
+  };
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffSec < 60) return "방금 전";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}분 전`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}시간 전`;
+  return `${Math.floor(diffSec / 86400)}일 전`;
+}
 
 export default function MarketDetail() {
   const router = useRouter();
@@ -27,40 +59,34 @@ export default function MarketDetail() {
     type: "success" | "warning" | "feature";
   } | null>(null);
 
-  // 데이터 바인딩 및 온보딩 체크
+  // 데이터 바인딩: 백엔드 상세 호출(SELL만 제공).
   useEffect(() => {
-    const isCompleted = localStorage.getItem("dangsquare_onboarding_completed");
-    if (isCompleted !== "true") {
-      router.push("/onboarding");
+    if (id == null) {
+      setLoading(false);
       return;
     }
-
-    if (id) {
-      const data = getMarketItemById(id);
-      if (data) {
-        setItem(data);
-        setLikes(data.likes);
-        
-        // 상세 페이지 방문 시 조회수 1 증가
-        const updated = { ...data, views: data.views + 1 };
-        updateMarketItem(updated);
-        setItem(updated);
-
-        // 이전 좋아요 상태 여부 로드 (localStorage 기록 활용)
-        const likedList = localStorage.getItem("dangsquare_market_liked_ids");
-        if (likedList) {
-          try {
-            const parsed = JSON.parse(likedList) as number[];
-            if (parsed.includes(id)) {
-              setHasLiked(true);
-            }
-          } catch (e) {
-            console.error(e);
-          }
+    let cancelled = false;
+    (async () => {
+      try {
+        const detail = await marketApi.detail(id);
+        if (cancelled) return;
+        setItem(adaptDetail(detail));
+        setLikes(detail.heartCount);
+        setHasLiked(detail.hearted);
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 401 && getToken() === null) {
+          router.replace("/onboarding");
+          return;
         }
+        setItem(null);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }
-    setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [id, router]);
 
   // 커스텀 알림 처리
@@ -71,46 +97,25 @@ export default function MarketDetail() {
     });
   };
 
-  // 추천 버튼 토글
-  const handleLikeToggle = () => {
+  // 추천 버튼 토글: 백엔드 토글 호출. 인증 필요(POST /api/market/items/{id}/heart).
+  const handleLikeToggle = async () => {
     if (!item) return;
-
-    let newLikes = likes;
-    let newHasLiked = !hasLiked;
-
-    if (newHasLiked) {
-      newLikes += 1;
-    } else {
-      newLikes = Math.max(0, newLikes - 1);
+    if (!getToken()) {
+      router.push("/onboarding");
+      return;
     }
-
-    setLikes(newLikes);
-    setHasLiked(newHasLiked);
-
-    // mock 스토리지 업데이트
-    const updated = { ...item, likes: newLikes };
-    updateMarketItem(updated);
-    setItem(updated);
-
-    // 좋아요 ID 리스트 갱신
-    const likedListStr = localStorage.getItem("dangsquare_market_liked_ids");
-    let likedList: number[] = [];
-    if (likedListStr) {
-      try {
-        likedList = JSON.parse(likedListStr) as number[];
-      } catch (e) {
-        console.error(e);
+    try {
+      const result = await marketApi.toggleHeart(item.id);
+      setLikes(result.heartCount);
+      setHasLiked(result.hearted);
+      setItem({ ...item, likes: result.heartCount });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.push("/onboarding");
+        return;
       }
+      setCustomAlert({ message: "좋아요 처리에 실패했어요.", type: "warning" });
     }
-
-    if (newHasLiked) {
-      if (!likedList.includes(item.id)) {
-        likedList.push(item.id);
-      }
-    } else {
-      likedList = likedList.filter(likedId => likedId !== item.id);
-    }
-    localStorage.setItem("dangsquare_market_liked_ids", JSON.stringify(likedList));
   };
 
   // 슬라이더 이전 사진
