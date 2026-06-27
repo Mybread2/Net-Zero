@@ -24,12 +24,12 @@ server:
 
 app:
   cors:
-    allowed-origins: http://54.174.174.124.sslip.io:3000
+    allowed-origins: http://54.174.174.124.sslip.io:3000,https://dang-square.vercel.app
   jwt:
     secret: ${JWT_SECRET:dev-secret-please-change-this-to-a-32byte-min-secret-0123456789}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   oauth2:
-    redirect-uri: http://54.174.174.124.sslip.io:3000
+    redirect-uri: https://dang-square.vercel.app
     onboarding-path: ${OAUTH2_ONBOARDING_PATH:/onboarding}
     home-path: ${OAUTH2_HOME_PATH:/}
   # AWS 연동(S3/Bedrock 공통). 자격증명은 주입하지 않는다 — IAM Role(DefaultCredentialsProvider) 자동 획득.
