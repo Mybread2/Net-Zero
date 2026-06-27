@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Gumi Romance';
+  src: url('/fonts/Gumi Romance.ttf') format('truetype'),
+       url('/fonts/Gumi Romance.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -25,8 +33,9 @@
 }
 
 .logoText {
-  font-size: 24px;
-  font-weight: 800;
+  font-family: 'Gumi Romance', sans-serif;
+  font-size: 28px;
+  font-weight: normal;
   color: #0d9488; /* Dangsquare Theme Color */
   letter-spacing: -0.5px;
 }
