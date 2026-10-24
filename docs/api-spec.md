@@ -2,7 +2,7 @@
 
 > 본문 한국어, 식별자는 영어. 도메인별로 묶고, 각 엔드포인트는 메서드·경로·인증 필요여부·
 > 요청·응답(JSON 예시)·주요 에러를 표기한다. 데이터 모델은 [domain-model](./domain-model.md),
-> LLM 엔드포인트 상세는 [llm-spec](./llm-spec.md) 참조.
+> LLM 엔드포인트 상세는 [llm-spec](./llm-spec.md) 참조함.
 
 ## 0. 공통 규약
 
